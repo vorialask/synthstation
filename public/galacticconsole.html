@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PHASE-PLANT XL: V37 COSMIC GARDEN</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;600;900&display=swap');
+        
+        :root { 
+            --bg: #050208; --panel: rgba(15, 10, 25, 0.8); --module: rgba(30, 20, 50, 0.5); 
+            --accent: #ffae00; --sub: #00d4ff; --border: #2a1a4a; --fx: #ff4b4b; --drum: #00ff88; --samp: #bb86fc; 
+            --planet-color: #4a2a8a;
+        }
+
+        body.Midnight { --accent: #ffae00; --planet-color: #ffae00; }
+        body.Cyberpunk { --accent: #ff00ff; --planet-color: #00ffff; --bg: #0a000a; }
+        body.Forest { --accent: #d4ff00; --planet-color: #2ecc71; --bg: #050805; }
+        body.Monolith { --accent: #ffffff; --planet-color: #555; --bg: #000; }
+        body.Blood { --accent: #ff0000; --planet-color: #ff0000; --bg: #080000; }
+
+        * { box-sizing: border-box; }
+        body { background: var(--bg); color: #bbaadd; font-family: 'Inter', sans-serif; margin: 0; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+        
+        /* CUTE PLANET BACKGROUND DECOR */
+        .cosmic-decor { position: fixed; border-radius: 50%; filter: blur(40px); z-index: -1; opacity: 0.3; pointer-events: none; }
+        #decor1 { width: 400px; height: 400px; background: var(--planet-color); top: -100px; left: -100px; }
+        #decor2 { width: 300px; height: 300px; background: var(--sub); bottom: -50px; right: -50px; }
+
+        #hud { position: fixed; pointer-events: none; background: var(--accent); color: #000; padding: 4px 10px; font-family: 'JetBrains Mono'; font-size: 10px; font-weight: 900; border-radius: 4px; display: none; z-index: 10000; box-shadow: 0 0 15px var(--accent); }
+
+        header { height: 70px; background: var(--panel); border-bottom: 2px solid var(--border); display: flex; align-items: center; padding: 0 30px; justify-content: space-between; backdrop-filter: blur(10px); }
+        .logo { font-weight: 900; color: var(--accent); font-family: 'JetBrains Mono'; letter-spacing: 4px; font-size: 1.2rem; text-shadow: 0 0 10px var(--accent); }
+        
+        main { display: grid; grid-template-columns: 380px 1fr 340px; height: calc(100vh - 70px); }
+        .column { background: var(--panel); border-right: 1px solid var(--border); padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; scrollbar-width: thin; }
+        
+        /* PLANETARY CONTAINERS */
+        .viz-container { background: #000; border: 2px solid var(--border); position: relative; border-radius: 15px; overflow: hidden; height: 200px; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+        canvas { position: absolute; width: 100%; height: 100%; top: 0; left: 0; }
+
+        .unit { background: var(--module); border: 1px solid var(--border); padding: 20px; border-radius: 20px; position: relative; backdrop-filter: blur(5px); }
+        .unit::before { content: ''; position: absolute; top: -10px; right: -10px; width: 40px; height: 40px; background: var(--module); border-radius: 50%; border: 1px solid var(--border); z-index: -1; }
+        .unit.sampler { border-top: 4px solid var(--samp); }
+        .unit.drum { border-top: 4px solid var(--drum); }
+        .unit.osc { border-top: 4px solid var(--accent); }
+        .unit-h { font-family: 'JetBrains Mono'; font-size: 11px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; color: #fff; text-transform: uppercase; letter-spacing: 2px; }
+        
+        /* 12 SLOT FX GRID */
+        .fx-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 15px; }
+        .fx-slot { height: 24px; background: rgba(0,0,0,0.3); border: 1px solid #3a2a5a; border-radius: 5px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; color: #666; transition: 0.2s; }
+        .fx-slot:hover { border-color: var(--accent); color: #fff; }
+        .fx-slot.active { background: var(--fx); color: #fff; border-color: #fff; box-shadow: 0 0 10px var(--fx); }
+
+        .stage { background: transparent; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .seq-box { background: var(--panel); border: 1px solid var(--border); border-radius: 15px; padding: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+        
+        /* PIANO ROLL */
+        .piano-roll-toggle { background: var(--border); color: #fff; padding: 5px 12px; border-radius: 20px; font-size: 10px; cursor: pointer; border: 1px solid #5a3a8a; }
+        .piano-roll-grid { display: none; grid-template-rows: repeat(36, 1fr); gap: 1px; background: rgba(0,0,0,0.5); height: 300px; margin-top: 15px; border-radius: 8px; border: 1px solid var(--border); overflow-y: scroll; scrollbar-width: none; }
+        .piano-row { display: grid; grid-template-columns: repeat(16, 1fr); height: 16px; gap: 1px; }
+        .p-step { background: rgba(255,255,255,0.03); border-right: 1px solid rgba(255,255,255,0.05); cursor: pointer; }
+        .p-step.on { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+        .p-step.active { border: 1px solid #fff; background: rgba(255,255,255,0.2); }
+        .p-key-label { position: sticky; left: 0; background: #1a0a2a; font-size: 8px; color: #fff; width: 35px; text-align: center; z-index: 10; border-right: 1px solid var(--border); line-height: 16px; }
+
+        .knob { width: 36px; height: 36px; background: #1a0a2a; border: 2px solid #3a2a5a; border-radius: 50%; position: relative; cursor: ns-resize; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
+        .knob-i { position: absolute; width: 3px; height: 12px; background: var(--accent); left: 50%; top: 4px; transform-origin: bottom center; margin-left: -1.5px; border-radius: 2px; }
+
+        .mixer { background: var(--panel); height: 150px; border-top: 2px solid var(--border); display: flex; padding: 20px; gap: 15px; overflow-x: auto; backdrop-filter: blur(10px); }
+        .strip { width: 60px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding: 10px 0; border-radius: 12px; flex-shrink: 0; }
+        .f-track { width: 6px; flex-grow: 1; background: #000; position: relative; margin: 10px 0; border-radius: 10px; }
+        .f-cap { width: 26px; height: 12px; background: var(--accent); position: absolute; left: -11px; cursor: ns-resize; border: 1px solid #fff; border-radius: 3px; }
+
+        button { background: #2a1a4a; color: #fff; border: 1px solid #4a3a7a; padding: 8px 14px; font-size: 10px; cursor: pointer; font-family: 'JetBrains Mono'; border-radius: 8px; text-transform: uppercase; font-weight: bold; }
+        button:hover { background: var(--accent); color: #000; border-color: #fff; }
+        select { background: #000; color: #fff; border: 1px solid #3a2a5a; font-size: 10px; padding: 6px; border-radius: 6px; }
+    </style>
+</head>
+<body class="Midnight">
+
+<div class="cosmic-decor" id="decor1"></div>
+<div class="cosmic-decor" id="decor2"></div>
+<div id="hud">0.00</div>
+
+<header>
+    <div class="logo">COSMIC-GARDEN XL // V37</div>
+    <div style="display:flex; align-items:center; gap:25px; background:rgba(0,0,0,0.3); padding:8px 25px; border-radius:15px; border:1px solid var(--border);">
+        <button onclick="Engine.toggle()" id="playBtn" style="color:var(--accent); min-width: 120px;">▶ ACTIVATE</button>
+        <div style="text-align:center;">
+            <div style="font-size:8px; color:#666;">PULSE (BPM)</div>
+            <input type="number" id="bpmIn" value="128" min="20" max="400" onchange="Engine.updateBPM(this.value)" style="background:none; border:none; color:var(--accent); font-family:'JetBrains Mono'; font-size:18px; width:50px; outline:none;">
+        </div>
+        <select onchange="document.body.className = this.value" style="width:120px;">
+            <option value="Midnight">MIDNIGHT SUN</option>
+            <option value="Cyberpunk">NEON NEBULA</option>
+            <option value="Forest">TERRA NOVA</option>
+            <option value="Monolith">VOID STAR</option>
+            <option value="Blood">RED GIANT</option>
+        </select>
+    </div>
+    <div style="display:flex; gap:10px;">
+        <button onclick="Engine.addModule('sampler')" style="color:var(--samp);">+ MOON SAMPLER</button>
+        <button onclick="Engine.addModule('osc')" style="color:var(--accent);">+ STAR SYNTH</button>
+        <button onclick="Engine.addSequencer()">+ NEW GALAXY</button>
+    </div>
+</header>
+
+<main>
+    <div class="column" id="moduleRack">
+        <div class="unit-h"><span>Orbital View</span></div>
+        <div class="viz-container"><canvas id="planetCanvas"></canvas><canvas id="wtCanvas"></canvas></div>
+    </div>
+    <div class="stage">
+        <div class="viz-container" style="height:120px;"><canvas id="specCanvas"></canvas></div>
+        <div id="seqRack" style="display:flex; flex-direction:column; gap:15px;"></div>
+    </div>
+    <div class="column" id="inspector" style="border-left:1px solid var(--border); border-right:none;">
+        <div class="unit-h"><span>Astro-FX Rack</span></div>
+        <div id="fxControls" style="text-align:center; padding-top:150px; font-size:11px; color:#444;">Select an FX Slot to modulate the signal path.</div>
+    </div>
+</main>
+
+<div class="mixer" id="mixerBus"></div>
+
+<script>
+const Engine = (() => {
+    const actx = new (window.AudioContext || window.webkitAudioContext)();
+    const masterBus = actx.createGain();
+    const analyzer = actx.createAnalyser();
+    analyzer.fftSize = 2048;
+    masterBus.connect(analyzer); analyzer.connect(actx.destination);
+
+    let isPlaying = false, step = 0, bpm = 128;
+    let modules = [], sequencers = [];
+    let wtBuffer = new Float32Array(512).fill(0);
+    const hud = document.getElementById('hud');
+
+    const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    const getFreq = (noteIdx) => 440 * Math.pow(2, (noteIdx - 57) / 12);
+
+    // --- ENHANCED COSMIC FX ENGINE ---
+    const createDSP = (type, val) => {
+        if(['lowpass','highpass'].includes(type)) {
+            const f = actx.createBiquadFilter(); f.type = type; f.frequency.value = 20 + (val * val * 19000); f.Q.value = 8; return f;
+        }
+        if(type === 'dist_hard') {
+            const s = actx.createWaveShaper(); const c = new Float32Array(44100);
+            for(let i=0; i<44100; i++) { let x = (i*2/44100)-1; c[i] = Math.tanh(x * val * 50); }
+            s.curve = c; return s;
+        }
+        if(type === 'dist_crush') {
+            const node = actx.createScriptProcessor(4096, 1, 1);
+            node.onaudioprocess = (e) => {
+                const inp = e.inputBuffer.getChannelData(0); const outp = e.outputBuffer.getChannelData(0);
+                const step = Math.pow(0.5, Math.floor(val * 12) + 1);
+                for (let i = 0; i < 4096; i++) outp[i] = step * Math.round(inp[i] / step);
+            }; return node;
+        }
+        if(type === 'echo') {
+            const d = actx.createDelay(); d.delayTime.value = val * 0.8;
+            const fb = actx.createGain(); fb.gain.value = 0.5;
+            d.connect(fb); fb.connect(d); return d;
+        }
+        if(type === 'space_verb') {
+            const d = actx.createDelay(); d.delayTime.value = 0.05 + (val * 0.1);
+            const fb = actx.createGain(); fb.gain.value = 0.7;
+            d.connect(fb); fb.connect(d); return d;
+        }
+        return actx.createGain();
+    };
+
+    class Module {
+        constructor(id, type) {
+            this.id = id; this.type = type; this.gain = 0.5; this.pitch = 220; this.wave = 'sawtooth';
+            this.fx = Array(12).fill(null).map(() => ({ type: 'none', val: 0.5, active: false }));
+            this.buffer = null; this.initUI();
+        }
+        initUI() {
+            const div = document.createElement('div'); div.className = `unit ${this.type}`; div.id = `m-${this.id}`;
+            let html = `<div class="unit-h"><span>${this.type} [${this.id.toString().slice(-3)}]</span><span onclick="Engine.removeModule(${this.id})" style="cursor:pointer">×</span></div>`;
+            
+            if(this.type === 'sampler') {
+                html += `<div id="drop-${this.id}" style="border:2px dashed var(--border); padding:12px; text-align:center; font-size:10px; border-radius:10px; color:var(--samp);">ORBITAL DATA DROP</div>`;
+            } else if(this.type === 'osc') {
+                html += `<select onchange="Engine.updateModule(${this.id}, 'wave', this.value)">
+                    <option value="sawtooth">Saw-Wave</option><option value="sine">Pure-Sine</option><option value="square">Pulse-Square</option>
+                    <option value="triangle">Tri-Orbital</option><option value="custom">Hand-Drawn</option>
+                </select>
+                <div style="margin-top:15px; display:flex; align-items:center; gap:10px;"><div class="knob" id="k-${this.id}"><div class="knob-i"></div></div><span style="font-size:9px; font-weight:bold;">TUNE</span></div>`;
+            }
+
+            html += `<div class="fx-grid">${Array(12).fill(0).map((_,i)=>`<div class="fx-slot" id="fx-${this.id}-${i}" onclick="Engine.inspectFX(${this.id}, ${i})">${i+1}</div>`).join('')}</div>`;
+            div.innerHTML = html; document.getElementById('moduleRack').appendChild(div);
+
+            const strip = document.createElement('div'); strip.className = 'strip'; strip.id = `s-${this.id}`;
+            strip.innerHTML = `<div style="font-size:8px; font-weight:900;">${this.type.slice(0,3).toUpperCase()}</div><div class="f-track"><div class="f-cap" id="f-${this.id}" style="top:50%"></div></div>`;
+            document.getElementById('mixerBus').appendChild(strip);
+
+            Engine.bindFader(`f-${this.id}`, (v) => { this.gain = v; return Math.round(v*100) + "%"; });
+            if(this.type === 'osc') Engine.bindKnob(`k-${this.id}`, (v) => { this.pitch = 40 + (v*v*3000); return Math.round(this.pitch) + "Hz"; });
+            if(this.type === 'sampler') this.initDrop();
+        }
+        initDrop() {
+            const dz = document.getElementById(`drop-${this.id}`);
+            dz.ondragover = (e) => { e.preventDefault(); dz.style.borderColor = "var(--samp)"; };
+            dz.ondrop = async (e) => { e.preventDefault(); const ab = await e.dataTransfer.files[0].arrayBuffer(); this.buffer = await actx.decodeAudioData(ab); dz.innerText = "DATA SYNCED"; };
+        }
+    }
+
+    const trigger = (mod, freq, seqVol, seqPan) => {
+        const now = actx.currentTime;
+        let head = actx.createGain(); let panner = actx.createStereoPanner(); let tail = head;
+        mod.fx.forEach(f => { if(f.active && f.type !== 'none') { const n = createDSP(f.type, f.val); tail.connect(n); tail = n; } });
+        panner.pan.setValueAtTime(seqPan, now); tail.connect(panner); panner.connect(masterBus);
+
+        if(mod.type === 'osc') {
+            const o = actx.createOscillator(); const g = actx.createGain();
+            if(mod.wave === 'custom') { const r = new Float32Array(513); for(let i=1; i<512; i++) r[i] = wtBuffer[i]; o.setPeriodicWave(actx.createPeriodicWave(r, new Float32Array(513))); }
+            else o.type = mod.wave;
+            o.frequency.setValueAtTime(freq || mod.pitch, now);
+            g.gain.setValueAtTime(mod.gain * seqVol * 0.3, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+            o.connect(g); g.connect(head); o.start(); o.stop(now + 0.3);
+        } else if(mod.type === 'sampler' && mod.buffer) {
+            const src = actx.createBufferSource(); const g = actx.createGain();
+            src.buffer = mod.buffer; g.gain.value = mod.gain * seqVol;
+            src.connect(g); g.connect(head); src.start();
+        }
+    };
+
+    const run = () => { if(!isPlaying) return;
+        sequencers.forEach(seq => {
+            const mod = modules.find(m => m.id == seq.targetId);
+            if(mod) {
+                for(let n=0; n<36; n++) if(seq.pianoGrid[n][step]) trigger(mod, getFreq(n + 36), seq.volume, seq.pan);
+            }
+            const steps = document.querySelectorAll(`#roll-${seq.id} .p-step-col-${step}`);
+            document.querySelectorAll(`.p-step`).forEach(s => s.classList.remove('active'));
+            steps.forEach(s => s.classList.add('active'));
+        });
+        step = (step + 1) % 16; setTimeout(run, (60000 / bpm) / 4);
+    };
+
+    const visuals = () => {
+        const wtCvs = document.getElementById('wtCanvas'), wtCtx = wtCvs.getContext('2d');
+        const plCvs = document.getElementById('planetCanvas'), plCtx = plCvs.getContext('2d');
+        const spCvs = document.getElementById('specCanvas'), spCtx = spCvs.getContext('2d');
+        const fData = new Uint8Array(analyzer.frequencyBinCount);
+        let drawing = false;
+
+        const loop = () => {
+            requestAnimationFrame(loop); analyzer.getByteFrequencyData(fData);
+            const accent = getComputedStyle(document.body).getPropertyValue('--planet-color');
+            const sub = getComputedStyle(document.body).getPropertyValue('--sub');
+            
+            // CELESTIAL DRAWING
+            plCtx.clearRect(0,0,plCvs.width,plCvs.height); 
+            plCtx.shadowBlur = 15; plCtx.shadowColor = accent;
+            plCtx.strokeStyle = accent; plCtx.lineWidth = 2;
+            plCtx.beginPath(); plCtx.arc(plCvs.width/2, plCvs.height/2, 40 + fData[10]/5, 0, Math.PI*2); plCtx.stroke();
+            plCtx.strokeStyle = sub; 
+            plCtx.beginPath(); plCtx.ellipse(plCvs.width/2, plCvs.height/2, 90 + fData[2]/3, 20 + fData[50]/10, Math.PI/4, 0, Math.PI*2); plCtx.stroke();
+            
+            // SPECTRUM
+            spCtx.fillStyle = 'rgba(0,0,0,0.3)'; spCtx.fillRect(0,0,spCvs.width,spCvs.height);
+            spCtx.beginPath(); spCtx.strokeStyle = accent;
+            for(let i=0; i<spCvs.width; i+=4) { let v = fData[i%512]/255; spCtx.lineTo(i, spCvs.height - v*spCvs.height); }
+            spCtx.stroke();
+
+            // WAVETABLE
+            wtCtx.clearRect(0,0,wtCvs.width,wtCvs.height); wtCtx.strokeStyle = "#fff"; wtCtx.lineWidth = 3; wtCtx.beginPath();
+            for(let i=0; i<512; i++){ let x = i*(wtCvs.width/512), y = (1-wtBuffer[i])*100; if(i==0) wtCtx.moveTo(x,y); else wtCtx.lineTo(x,y); }
+            wtCtx.stroke();
+        };
+
+        const upd = (e) => { if(!drawing) return; const r = wtCvs.getBoundingClientRect(); wtBuffer[Math.floor(((e.clientX - r.left)/r.width)*512)] = 1 - ((e.clientY - r.top)/r.height)*2; };
+        wtCvs.onmousedown = (e) => { drawing = true; upd(e); }; window.onmouseup = () => drawing = false; window.onmousemove = upd;
+        wtCvs.width = 380; wtCvs.height = 200; plCvs.width = 380; plCvs.height = 200; spCvs.width = 1000; spCvs.height = 120; loop();
+    };
+
+    return {
+        init: () => { visuals(); Engine.addModule('osc'); Engine.addSequencer(); },
+        addModule: (type) => modules.push(new Module(Date.now(), type)),
+        addSequencer: () => {
+            const id = Date.now(); const s = { id, targetId: modules[0]?.id || 0, pianoGrid: Array(36).fill(0).map(()=>Array(16).fill(false)), volume: 0.8, pan: 0 };
+            sequencers.push(s);
+            const div = document.createElement('div'); div.className = 'seq-box'; div.id = `seq-${id}`;
+            div.innerHTML = `
+                <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
+                    <select onchange="Engine.linkSeq(${id}, this.value)">${modules.map(m => `<option value="${m.id}">${m.type}</option>`)}</select>
+                    <div class="piano-roll-toggle" onclick="document.getElementById('roll-${id}').style.display = document.getElementById('roll-${id}').style.display === 'block' ? 'none' : 'block'">PIANO ROLL</div>
+                    <div class="knob" id="sv-${id}"><div class="knob-i"></div></div>
+                    <div class="knob" id="sp-${id}"><div class="knob-i"></div></div>
+                    <button onclick="Engine.removeSeq(${id})">×</button>
+                </div>
+                <div class="piano-roll-grid" id="roll-${id}"></div>`;
+            document.getElementById('seqRack').appendChild(div);
+            const roll = document.getElementById(`roll-${id}`);
+            for(let n=35; n>=0; n--) {
+                const row = document.createElement('div'); row.className = 'piano-row';
+                row.innerHTML = `<div class="p-key-label">${NOTES[n%12]}${Math.floor(n/12)+2}</div>`;
+                for(let st=0; st<16; st++) {
+                    const stepEl = document.createElement('div'); stepEl.className = `p-step p-step-col-${st}`;
+                    stepEl.onclick = () => { s.pianoGrid[n][st] = !s.pianoGrid[n][st]; stepEl.classList.toggle('on'); };
+                    row.appendChild(stepEl);
+                }
+                roll.appendChild(row);
+            }
+            Engine.bindKnob(`sv-${id}`, (v) => { s.volume = v; return "GAIN: "+Math.round(v*100)+"%"; });
+            Engine.bindKnob(`sp-${id}`, (v) => { s.pan = (v*2)-1; return "PAN: "+Math.round((v*2-1)*100); });
+        },
+        inspectFX: (modId, slotIdx) => {
+            const mod = modules.find(m => m.id == modId); const fx = mod.fx[slotIdx];
+            const panel = document.getElementById('fxControls');
+            panel.innerHTML = `<div style="color:var(--accent); font-weight:900; letter-spacing:1px;">ASTRO-SLOT ${slotIdx+1}</div>
+                <select id="fx-sel" style="margin:20px 0; width:100%;">
+                    <option value="none">-- BYPASS --</option>
+                    <option value="lowpass">WARP FILTER (LP)</option>
+                    <option value="highpass">VOID FILTER (HP)</option>
+                    <option value="dist_hard">HARD SATURATION</option>
+                    <option value="dist_crush">BIT-CRUSHER</option>
+                    <option value="echo">COSMIC ECHO</option>
+                    <option value="space_verb">NEBULA REVERB</option>
+                </select>
+                <div class="knob" id="fx-k" style="margin:10px auto;"><div class="knob-i"></div></div>
+                <button onclick="Engine.saveFX(${modId}, ${slotIdx})" style="width:100%; margin-top:20px;">SYNC FX</button>`;
+            document.getElementById('fx-sel').value = fx.type;
+            Engine.bindKnob('fx-k', (v) => { fx.val = v; return "DRY/WET: "+Math.round(v*100)+"%"; });
+        },
+        saveFX: (modId, slotIdx) => { const mod = modules.find(m => m.id == modId); mod.fx[slotIdx].type = document.getElementById('fx-sel').value; mod.fx[slotIdx].active = mod.fx[slotIdx].type !== 'none'; document.getElementById(`fx-${modId}-${slotIdx}`).classList.toggle('active', mod.fx[slotIdx].active); },
+        removeModule: (id) => { modules = modules.filter(m => m.id != id); document.getElementById(`m-${id}`).remove(); document.getElementById(`s-${id}`).remove(); },
+        removeSeq: (id) => { sequencers = sequencers.filter(s => s.id != id); document.getElementById(`seq-${id}`).remove(); },
+        linkSeq: (sId, mId) => sequencers.find(s => s.id == sId).targetId = mId,
+        updateModule: (id, prop, val) => modules.find(m => m.id == id)[prop] = val,
+        updateBPM: (v) => bpm = v,
+        toggle: () => { isPlaying = !isPlaying; if(isPlaying){ actx.resume(); run(); } document.getElementById('playBtn').innerText = isPlaying ? "■ DEACTIVATE" : "▶ ACTIVATE"; },
+        bindKnob: (id, cb) => { const el = document.getElementById(id); let v = 0.5; el.onmousedown = (e) => { hud.style.display = 'block'; let sY = e.clientY; window.onmousemove = (me) => { v = Math.max(0, Math.min(1, v + (sY - me.clientY)/100)); sY = me.clientY; el.querySelector('.knob-i').style.transform = `rotate(${(v*280)-140}deg)`; hud.innerText = cb(v); hud.style.left = (me.clientX+15)+'px'; hud.style.top = (me.clientY-15)+'px'; }; window.onmouseup = () => { window.onmousemove = null; hud.style.display = 'none'; }; }; },
+        bindFader: (id, cb) => { const cap = document.getElementById(id); cap.onmousedown = (e) => { hud.style.display = 'block'; let sY = e.clientY, sT = cap.offsetTop; window.onmousemove = (me) => { let t = Math.max(0, Math.min(80, sT + (me.clientY-sY))); cap.style.top = t+'px'; hud.innerText = cb(1-(t/80)); hud.style.left = (me.clientX+15)+'px'; hud.style.top = (me.clientY-15)+'px'; }; window.onmouseup = () => { window.onmousemove = null; hud.style.display = 'none'; }; }; }
+    };
+})();
+Engine.init();
+</script>
+</body>
+</html>
